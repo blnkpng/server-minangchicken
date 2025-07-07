@@ -375,7 +375,31 @@ app.get("/api/data-keuangan", async (req, res) => {
     res.status(400).json({ success: false, message: "Action tidak valid" });
   }
 });
+// GET /api/login => Proxy login user ke Google Apps Script
+app.get("/api/login", async (req, res) => {
+  const { username, password } = req.query;
 
+  if (!username || !password) {
+    return res.json({ success: false, message: "Username dan password wajib diisi" });
+  }
+
+  try {
+    const GAS_URL = `https://script.google.com/macros/s/AKfycbzq6o_ZETi5HfSMaVFgRBxM2eTfqRDu3DIGnUm-pRhCfaUuqaZXmVxFtfKI93CdG0e_/exec?action=index&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
+
+    const response = await fetch(GAS_URL);
+    const text = await response.text();
+
+    // Ambil isi JSON dari callback(...)
+    const match = text.match(/callback\((.*?)\);?/);
+    if (!match || !match[1]) throw new Error("Format response JSONP tidak valid");
+
+    const json = JSON.parse(match[1]);
+    res.json(json);
+  } catch (err) {
+    console.error("Login Proxy Error:", err);
+    res.status(500).json({ success: false, message: "Gagal menghubungi server login GAS" });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("<h1>Server is running</h1><p>You can use the /api/* endpoints.</p>");
